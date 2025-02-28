@@ -8,23 +8,18 @@
 ```bash
 > pip install -r requirements.txt
 ```
+
 2. Config API keys in `.env` file 
-Set either OpenAI or Anthropic API` key. Also, you can add any types of LLM https://docs.crewai.com/concepts/llms
+Set either OpenAI or Anthropic API key. Also, you can add any types of LLM https://docs.crewai.com/concepts/llms
 ```bash
 SERPER_API_KEY= # https://serper.dev/
 OPENAI_API_KEY= 
 ANTHROPIC_API_KEY=
 ```
 
-3. Set up __target_domains__ in `main.py` file
+3. Run `dorkagent.py`
 ```bash
-target_domains = [ # BBP, VDP, etc
-    "airbnb.com",
-    "dyson.com",
-    "starbucks.com",
-    "tiktok.com",
-    "tesla.com",
-]
+> python dorkagent.py
 ```
 
 ## Customize
@@ -58,6 +53,9 @@ def _make_api_request(self, search_query: str, search_type: str) -> dict:
 
 ## TODO
 - Improvement on false positives
+- Support for Telegram bot
+
+## Update Log
 - Conversion to a CLI-based tool
 - Addition of Google Dorks for exploring various attack surfaces
-- Support for Telegram bot 
+- Addition of depth option
