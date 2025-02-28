@@ -4,12 +4,17 @@
 <img src="workflow.png" alt="Workflow Diagram" width="500">                   
                                                                                                     
 ## Usage
-1. Install packages
+1. Git clone
+```bash
+> git clone https://github.com/yee-yore/DorkAgent.git
+```
+
+2. Install packages
 ```bash
 > pip install -r requirements.txt
 ```
 
-2. Config API keys in `.env` file 
+3. Config API keys in `.env` file 
 Set either OpenAI or Anthropic API key. Also, you can add any types of LLM https://docs.crewai.com/concepts/llms
 ```bash
 SERPER_API_KEY= # https://serper.dev/
@@ -17,7 +22,7 @@ OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
 ```
 
-3. Run `dorkagent.py`
+4. Run `dorkagent.py`
 ```bash
 > python dorkagent.py
 ```
