@@ -19,7 +19,7 @@ def task(target_domain, agents):
         site:{target_domain} ext:txt inurl:robots.txt
         site:{target_domain} (inurl:/download.jsp | inurl:/downloads.jsp | inurl:/upload.jsp) | inurl:/uploads.jsp | inurl:/download.php | inurl:/downloads.php | inurl:/upload.php) | inurl:/uploads.php)
         site:{target_domain} (inurl:index.php?page | inurl:file | inurl:inc | inurl:layout | inurl:template | inurl:content | inurl:module)
-        
+        (site:*.s3.amazonaws.com | site:*.s3-external-1.amazonaws.com | site:*.s3.dualstack.us-east-1.amazonaws.com | site:*.s3.ap-south-1.amazonaws.com) "{target_domain}"
         """,
         expected_output=f"""Findings discovered on {target_domain} through Google Dorking: """,
         agent=agents["searcher"]
