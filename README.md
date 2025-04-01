@@ -11,7 +11,9 @@
 
 2. Install packages
 ```bash
-> pip install -r requirements.txt
+# python version = 3.11.9
+> pip install -r requirements.txt # for macOS
+> pip install -r requirements_windows.txt # for Windows
 ```
 
 3. Config API keys in `.env` file 
@@ -57,10 +59,8 @@ def _make_api_request(self, search_query: str, search_type: str) -> dict:
 ```
 
 ## TODO
-- Improvement on false positives
 - Support for Telegram bot
+- Logging Options
 
 ## Update Log
-- Conversion to a CLI-based tool
-- Addition of Google Dorks for exploring various attack surfaces
-- Addition of depth option
+- **2025-04-01**: Added hybrid LLM option (GPT & Claude); Added dork `intitle:"IIS Windows Server"`; Applied prompt engineering to tasks.py; Added default depth consideration for subdomain inputs; Added `requirements.txt` for Windows/MacOS compatibility

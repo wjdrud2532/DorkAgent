@@ -9,6 +9,7 @@ from crewai import LLM
 from termcolor import colored
 from prompt_toolkit import prompt
 from prompt_toolkit.completion import PathCompleter
+import time
 
 import sys, re, os
 import pyfiglet
@@ -44,6 +45,7 @@ def verify_api_key(llm_type):
         sys.exit(1)
 
 def select_llm():
+    
     ClaudeHaiku = LLM(
         api_key=os.getenv('ANTHROPIC_API_KEY'),
         model='anthropic/claude-3-5-haiku-20241022',
@@ -55,16 +57,19 @@ def select_llm():
         print("\n")
         print("1. GPT-4o Mini")
         print("2. Claude 3.5 Haiku")
+        print("3. Hybrid (4o Mini & Haiku)")
         print("\n")
         
-        choice = input("[?] Choose LLM for Agents (1 - 2): ").strip()
+        choice = input("[?] Choose LLM for Agents (1 - 3): ").strip()
         
         if choice == "1":
             return GPT4oMini, "openai"
         elif choice == "2":
             return ClaudeHaiku, "anthropic"
+        elif choice == "3":
+            return (GPT4oMini, ClaudeHaiku), "hybrid"
         else:
-            print("❌ Invalid choice. Please enter 1 - 2.")
+            print("❌ Invalid choice. Please enter 1 - 3.")
 
 def get_file_path(prompt_text):
     completer = PathCompleter()
@@ -105,31 +110,43 @@ def get_target_domains():
 def select_depth():
     while True:
         print("\n")
-        print("1] *.target.com")
-        print("2] *.*.target.com")
-        print("3] *.*.*.target.com")
+        print("1] target.com")
+        print("2] *.target.com")
+        print("3] *.*.target.com")
+        print("4] *.*.*.target.com")
         print("\n")
 
-        depth = input("[?] Choose depth for dorking (1 - 3): ").strip()
+        depth = input("[?] Choose depth for dorking (1 - 4): ").strip()
         
-        if depth == "1" or "2" or "3":
+        if depth == "1" or "2" or "3" or "4":
             return depth
         else:
-            print("❌ Invalid choice. Please enter 1 - 3.")
+            print("❌ Invalid choice. Please enter 1 - 4.")
 
 def adjust_depth(target_domains, depth):
     try:
         depth = int(depth)  
-        if depth not in [1, 2, 3]:  
+        if depth < 1:  
             raise ValueError("Invalid depth value")
     except ValueError:
         print("❌ Invalid depth input. Defaulting to depth = 1.")
         depth = 1
 
-    prefix = ".".join(["*"] * depth)  
-    adjusted_domains = [f"{prefix}.{domain}" for domain in target_domains]
+    if depth == 1:
+        adjusted_domains = target_domains
+    else:
+        prefix = ".".join(["*"] * (depth - 1))  
+        adjusted_domains = [f"{prefix}.{domain}" for domain in target_domains]
 
     return adjusted_domains
+
+def sanitize_filename(domain_name):
+
+    # '*' -> 'wildcard'
+    sanitized = domain_name.replace('*', 'wildcard')
+    sanitized = re.sub(r'[\\/*?:"<>|]', '', sanitized)
+    
+    return sanitized
 
 class Tee:
     ANSI_ESCAPE = re.compile(r'\x1B\[[0-9;]*m')  # Regex to remove ANSI escape codes
@@ -176,14 +193,26 @@ if __name__ == "__main__":
     LOG_DIR = os.path.join("./log", date)
     os.makedirs(LOG_DIR, exist_ok=True)
 
+    start_time = time.time()
+
     for target_domain in target_domains:
-        domain = target_domain.split('.', maxsplit=target_domain.count('*'))[-1]
-        log = os.path.join(LOG_DIR, f"{date}_{domain}.log")
-        report = os.path.join(LOG_DIR, f"{date}_{domain}.md")
+        original_domain = target_domain 
+        
+        if '*' in target_domain:
+            domain_parts = target_domain.split('.')
+            base_domain = domain_parts[1]  
+        else:
+            domain = target_domain.split('.', maxsplit=target_domain.count('.'))[-1]
+            base_domain = target_domain
+        
+        safe_domain = sanitize_filename(base_domain)
+        
+        log = os.path.join(LOG_DIR, f"{date}_{safe_domain}.log")
+        report = os.path.join(LOG_DIR, f"{date}_{safe_domain}.md")
 
         crew = Crew(
             agents=list(agents.values()),  
-            tasks=task(target_domain, agents),  
+            tasks=task(original_domain, agents), 
             verbose=1,
         )
 
@@ -191,9 +220,14 @@ if __name__ == "__main__":
             redirect_stdout(Tee(log, sys.__stdout__)), \
             redirect_stderr(Tee(log, sys.__stderr__)):
             
-            print(f"Dorking on {target_domain}...")
+            print(f"Dorking on {original_domain}...")
             
             result = crew.kickoff()
 
             with open(report, "w", encoding="utf-8") as f:
                 f.write(str(result))
+    
+    end_time = time.time()
+    total_execution_time = end_time - start_time
+    
+    # print(f"second: {total_execution_time:.2f}s")

@@ -5,7 +5,11 @@ search_tool = SerperDevTool()
 scrape_tool = ScrapeWebsiteTool()
 
 def initialize_agents(llm):
-    
+    if isinstance(llm, tuple) and len(llm) == 2:
+        gpt4o_mini, claude_haiku = llm
+    else:
+        gpt4o_mini = claude_haiku = llm
+
     searcher = Agent(
         role="searcher",
         goal="Performing advanced Google searches using Google Dorks",
@@ -13,7 +17,7 @@ def initialize_agents(llm):
         verbose=False,
         allow_delegation=False,
         tools=[search_tool],
-        llm=llm,  
+        llm=gpt4o_mini,
     )
 
     bughunter = Agent(
@@ -22,7 +26,7 @@ def initialize_agents(llm):
         backstory="A skilled penetration tester specializing in web security and vulnerability assessments",
         verbose=False,
         allow_delegation=False,
-        llm=llm, 
+        llm=claude_haiku, 
     )
 
     writer = Agent(
@@ -31,7 +35,7 @@ def initialize_agents(llm):
         backstory="A technical writer specializing in cybersecurity documentation and structured reporting",
         verbose=True,
         allow_delegation=False,
-        llm=llm,  
+        llm=gpt4o_mini,  
     )
 
     return {"searcher": searcher, "bughunter": bughunter, "writer": writer}
