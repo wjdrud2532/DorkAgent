@@ -23,7 +23,7 @@ def display_banner():
     print(colored("                                        by yee-yore", "magenta"))
     print("\n")
     print("DorkAgent is a LLM-powered agent for automated Google Dorking in bug hunting & pentesting.")
-    print(colored("[Ver] Current DorkAgent version is v1.1", "cyan"))
+    print(colored("[Ver] Current DorkAgent version is v1.2", "cyan"))
     print("=" * 90)
 
 def verify_api_key(llm_type):
