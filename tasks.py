@@ -7,7 +7,7 @@ def task(target_domain, agents):
         # Google Dorking Search Analysis
 
         ## Objective
-        Execute the following Google Dork queries for the domain {target_domain} and collect search results.
+        Execute the following Google Dork queries for the domain {target_domain} and collect ONLY REAL search results that actually exist.
 
         ## Google Dork Query List
         1. site:{target_domain} (intitle:"index of /" | intitle:"docker-compose.yml" | intitle:".env" | intitle:"config.yml" | intitle:".git" | intitle:"package.json" | intitle:"requirements.txt" | intitle:".gitignore" | intitle:"IIS Windows Server")
@@ -26,86 +26,65 @@ def task(target_domain, agents):
         ## Search Guidelines
         - Execute each query exactly in the format specified above.
         - If a query returns no results, immediately proceed to the next query.
-        - Verify that each URL is accessible.
-        - Provide a brief description of the content for each URL.
+        - ONLY report URLs that you ACTUALLY find in the search results.
+        - NEVER fabricate or hallucinate any URLs or search results.
+        - If all queries return no results, return empty results list.
+        - For each URL found, provide a brief description of the actual content.
 
         ## Exclusion Criteria
-        Exclude results if the URL or title contains any of the following keywords (high likelihood of false positives):
+        Exclude results if the URL, title, or filename contains any of the following keywords (high likelihood of false positives):
         - "Advertisement", "Agreement", "Terms and conditions", "Terms of Use"
         - "API Docs", "Forum", "Help", "Community", "Code of Conduct"
-        - "Developers", "Statement", "Support", "Rules", "example"
-        - "Guideline", "Template"
+        - "Developers", "Statement", "Support", "Rules", "example", "sample", "demo", "test"
+        - "Guideline", "Template", "dummy", "placeholder"
+        
+        Pay special attention to filtering out:
+        - Files with names containing "example_", "sample_", "test_", "demo_"
+        - Files that appear to be templates, training materials, or examples
+        - Documentation examples, test data, and dummy content
 
         ## Important Notes
         - Search only within the provided domain; do not expand the search scope.
         - Do not use queries other than the dork queries provided above.
         - Provide all URLs in exact full URL format.
         - Indicate when a query was executed even if it yielded no results.
+        - NEVER generate fictional findings or examples - only report what you actually find.
+        
+        ## Content Validation
+        For each potentially sensitive file found, perform the following checks:
+        - Examine the filename for indicators that it might be example data (e.g., "example_", "sample_", "demo_")
+        - Check if the data appears to be realistic or if it seems to be placeholder/dummy data
+        - If the file contains user information, check if it appears to be real user data or training examples
+        - Look for clues in the file metadata or content suggesting it's for instructional purposes
+        - Assess whether data patterns look genuine (random distribution) or artificial (patterns like "user1", "user2", etc.)
+        
+        Only report files that appear to contain genuine sensitive information, not example data.
         """,
         expected_output=f"""
         <findings>
         [
           {{
             "domain": "{target_domain}",
-            "total_queries": 12,
-            "queries_with_results": 3,
-            "total_urls_found": 7,
+            "total_queries": <number_of_queries_executed>,
+            "queries_with_results": <number_of_queries_with_results>,
+            "total_urls_found": <number_of_urls_found>,
             "results": [
+              // Only include this section if results were actually found
               {{
-                "query_index": 1,
-                "query": "site:{target_domain} (intitle:\\"index of /\\" | intitle:\\"docker-compose.yml\\" | intitle:\\".env\\" | intitle:\\"config.yml\\" | intitle:\\".git\\" | intitle:\\"package.json\\" | intitle:\\"requirements.txt\\" | intitle:\\".gitignore\\" | intitle:\\"IIS Windows Server\\")",
+                "query_index": <index_of_query>,
+                "query": "<exact_query_executed>",
                 "urls_found": [
                   {{
-                    "url": "https://{target_domain}/directory/",
-                    "title": "Index of /directory",
-                    "description": "Directory listing showing config files and source code"
-                  }},
-                  {{
-                    "url": "https://{target_domain}/assets/",
-                    "title": "Index of /assets",
-                    "description": "Directory listing containing JavaScript and CSS assets"
+                    "url": "<actual_url_found>",
+                    "title": "<actual_page_title>",
+                    "description": "<brief_description_of_actual_content>"
                   }}
-                ]
-              }},
-              {{
-                "query_index": 6,
-                "query": "site:{target_domain} ext:txt inurl:robots.txt",
-                "urls_found": [
-                  {{
-                    "url": "https://{target_domain}/robots.txt",
-                    "title": "Robots.txt file",
-                    "description": "Contains disallowed directories including /admin and /internal"
-                  }}
-                ]
-              }},
-              {{
-                "query_index": 7,
-                "query": "site:{target_domain} (ext:yaml | ext:yml | ext:ini | ext:conf | ext:config | ext:log | ext:pdf) (intext:\\"token\\" | intext:\\"access_token\\" | intext:\\"api_key\\" | intext:\\"private_key\\" | intext:\\"secret\\")",
-                "urls_found": [
-                  {{
-                    "url": "https://{target_domain}/config/app.config",
-                    "title": "Application Configuration",
-                    "description": "Configuration file containing API keys and database credentials"
-                  }},
-                  {{
-                    "url": "https://{target_domain}/logs/debug.log",
-                    "title": "Debug Log",
-                    "description": "Log file containing error messages with tokens"
-                  }},
-                  {{
-                    "url": "https://{target_domain}/settings/db.yaml",
-                    "title": "Database Settings",
-                    "description": "YAML file with database connection strings"
-                  }},
-                  {{
-                    "url": "https://{target_domain}/api/swagger.yml",
-                    "title": "API Documentation",
-                    "description": "API documentation with example authentication tokens"
-                  }}
+                  // Additional URLs if found
                 ]
               }}
+              // Additional queries with results
             ],
-            "queries_without_results": [2, 3, 4, 5, 8, 9, 10, 11, 12]
+            "queries_without_results": [<indices_of_queries_that_returned_no_results>]
           }}
         ]
         </findings>
@@ -119,6 +98,21 @@ def task(target_domain, agents):
 
         ## Objective
         Analyze the Google Dorking results found by the searcher to identify potential security vulnerabilities or attack vectors.
+        
+        ## CRITICAL INSTRUCTIONS
+        - ONLY analyze URLs that were ACTUALLY found by the searcher in Task 1.
+        - DO NOT invent, fabricate, or hallucinate any vulnerabilities or findings.
+        - If no URLs were found by the searcher, report that no vulnerabilities could be identified.
+        - DO NOT use example data from this prompt as actual findings.
+        - ALWAYS base your analysis SOLELY on real search results.
+        
+        ## Filtering Example/Testing Data
+        - EXCLUDE any files with names containing words like "example", "sample", "demo", "test", "dummy"
+        - Do not report vulnerabilities based on example, training, or test files
+        - Be skeptical of data that looks too perfect or follows obvious patterns (e.g., sequential IDs, test@example.com)
+        - For user data, verify it appears to be actual user information rather than placeholder content
+        - If data contains elements like "example_value_based_audience_file" or similar indicators of non-production data, exclude it
+        - Pay special attention to file metadata, headers, or comments that might indicate test/example status
 
         ## Analysis Categories
         1. Sensitive File Exposure:
@@ -182,49 +176,31 @@ def task(target_domain, agents):
         [
           {{
             "domain": "{target_domain}",
-            "total_urls_analyzed": 7,
-            "total_vulnerabilities": 3,
-            "total_excluded": 1,
+            "total_urls_analyzed": <number_of_urls_analyzed>,
+            "total_vulnerabilities": <number_of_vulnerabilities_found>,
+            "total_excluded": <number_of_urls_excluded>,
             "vulnerabilities": [
+              // Only include if actual vulnerabilities were found based on real results
               {{
-                "type": "sensitive_file_exposure",
-                "subtype": "directory_listing",
-                "url": "https://{target_domain}/directory/",
-                "severity": "High",
-                "description": "Directory listing enabled showing configuration files and source code",
-                "impact": "Attackers can access sensitive files not meant for public access including configuration files with credentials",
-                "evidence": "Directory listing shows .env files and database configuration",
-                "exploit_vector": "Direct access to URL reveals all directory contents. Attacker can navigate to sensitive files like https://{target_domain}/directory/.env",
-                "remediation": "Disable directory listing in web server configuration and restrict access to sensitive directories"
-              }},
-              {{
-                "type": "information_disclosure",
-                "subtype": "restricted_paths",
-                "url": "https://{target_domain}/robots.txt",
-                "severity": "Medium",
-                "description": "Robots.txt reveals sensitive directories and admin interfaces",
-                "impact": "Provides information about restricted areas and potential attack surfaces",
-                "evidence": "Disallow: /admin/\nDisallow: /internal/\nDisallow: /backup/",
-                "exploit_vector": "Attacker can directly access restricted paths: https://{target_domain}/admin/, https://{target_domain}/internal/",
-                "remediation": "Remove sensitive path information from robots.txt and ensure proper authentication"
-              }},
-              {{
-                "type": "credential_exposure",
-                "subtype": "api_key",
-                "url": "https://{target_domain}/config/app.config",
-                "severity": "Critical",
-                "description": "API keys and database credentials exposed in configuration file",
-                "impact": "Complete unauthorized access to API services and database systems",
-                "evidence": "API_KEY=Abcd1234XyzPQr56789\nDB_PASSWORD=SecurePass123!",
-                "exploit_vector": "Attacker can use exposed credentials to access API: curl -H 'Authorization: Bearer Abcd1234XyzPQr56789' https://api.{target_domain}/v1/users",
-                "remediation": "Remove configuration files from public access, implement proper authentication, and rotate exposed credentials immediately"
+                "type": "<vulnerability_type>",
+                "subtype": "<vulnerability_subtype>",
+                "url": "<actual_url_from_search_results>",
+                "severity": "<severity_level>",
+                "description": "<description_of_actual_vulnerability>",
+                "impact": "<potential_impact>",
+                "evidence": "<actual_evidence_from_page>",
+                "exploit_vector": "<how_the_vulnerability_could_be_exploited>",
+                "remediation": "<recommended_fix>"
               }}
+              // Additional vulnerabilities if found
             ],
             "excluded_urls": [
+              // Only include if URLs were excluded
               {{
-                "url": "https://{target_domain}/api/swagger.yml",
-                "reason": "API documentation excluded based on 'API Docs' keyword"
+                "url": "<excluded_url>",
+                "reason": "<reason_for_exclusion>"
               }}
+              // Additional excluded URLs
             ]
           }}
         ]
@@ -240,25 +216,26 @@ def task(target_domain, agents):
         ## Objective
         Create a professional security report for {target_domain} based on the Google Dorking results from the searcher and vulnerability analysis from the bug hunter.
 
+        ## CRITICAL INSTRUCTIONS
+        - ONLY include vulnerabilities that were ACTUALLY identified by the bug hunter in Task 2.
+        - NEVER fabricate or hallucinate any vulnerabilities, findings, or evidence.
+        - If the bug hunter found no vulnerabilities, state clearly that no vulnerabilities were found.
+        - Use ONLY real data from the previous tasks - do not use any example data from this prompt.
+        - If no URLs or vulnerabilities were found, create a simple report stating that no issues were identified.
+
         ## Report Structure
         1. Summary
-           - Assessment date
            - Number of vulnerabilities found (classified by severity)
            - Key findings
            - Overall risk assessment
 
-        2. Methodology
-           - Explanation of Google Dorking search methodology
-           - Categories of queries used
-           - Analysis approach
-
-        3. Vulnerability Findings
+        2. Vulnerability Findings
            - Categorized by severity (Critical, High, Medium, Low)
            - Detailed description of each vulnerability
            - Evidence (URLs, screenshots, code, etc.)
            - Potential impact analysis
 
-        4. Attack Scenarios
+        3. Attack Scenarios
            - Possible attack scenarios using the vulnerabilities found
            - Vulnerability chaining possibilities
            - Potential damage from successful attacks
@@ -279,104 +256,56 @@ def task(target_domain, agents):
         # Security Assessment Report for {target_domain}
 
         ## 1. Summary
-        - **Assessment Date**: {{'{{currentDate}}'}}
         - **Target Domain**: {target_domain}
         - **Vulnerabilities Found**:
-          - 🔴 Critical: 1
-          - 🟠 High: 1
-          - 🟡 Medium: 1
-          - 🔵 Low: 0
-        - **Total Vulnerabilities**: 3
-        - **Overall Risk Level**: 🔴 Critical
+          - 🔴 Critical: <number_of_critical_vulnerabilities>
+          - 🟠 High: <number_of_high_vulnerabilities>
+          - 🟡 Medium: <number_of_medium_vulnerabilities>
+          - 🔵 Low: <number_of_low_vulnerabilities>
+        - **Total Vulnerabilities**: <total_number_of_vulnerabilities>
+        - **Overall Risk Level**: <overall_risk_assessment>
 
         ### Key Findings
-        - API keys and database credentials exposed in configuration file
-        - Directory listing enabled, allowing access to sensitive files
-        - Sensitive paths and admin interfaces revealed through robots.txt
+        - <key_finding_1>
+        - <key_finding_2>
+        - <key_finding_3>
 
-        ## 2. Methodology
-        This assessment was conducted using Google Dorking techniques to analyze publicly accessible information on the web. A total of 12 Google Dork queries were executed to explore directory listings, configuration files, sensitive documents, log files, admin pages, and more.
+        ## 2. Vulnerability Findings
 
-        ### Google Dork Categories Used
-        - Configuration and source code exposure
-        - Sensitive document discovery
-        - PII and credential exposure
-        - Parameter manipulation points
-        - Admin interfaces
-        - Robots.txt analysis
-        - API key and token exposure
-        - File upload/download endpoints
-        - File inclusion vulnerability points
-        - Internal tool and communication leakage
-        - Open redirect vulnerability points
-        - Cloud storage exposure
-
-        ## 3. Vulnerability Findings
+        <If no vulnerabilities were found, include only: "No vulnerabilities were identified during this assessment.">
 
         ### 🔴 Critical Vulnerabilities
 
-        #### VULN-001: API Keys and Database Credentials Exposure
-        - **URL**: https://{target_domain}/config/app.config
-        - **Description**: Publicly accessible configuration file exposing API keys and database credentials in plaintext.
-        - **Evidence**:
-        ```
-        API_KEY=Abcd1234XyzPQr56789
-        DB_PASSWORD=SecurePass123!
-        DB_USER=admin
-        DB_HOST=internal-db.{target_domain}
-        ```
-        - **Impact**: Attackers can gain complete access to API services and databases, potentially leading to data exfiltration, modification, or deletion.
-        - **Attack Vector**: Authentication to API using exposed credentials:
-        ```
-        curl -H 'Authorization: Bearer Abcd1234XyzPQr56789' https://api.{target_domain}/v1/users
-        ```
+        <Include only if critical vulnerabilities were found>
+
+        #### VULN-001: <vulnerability_title>
+        - **URL**: <actual_url>
+        - **Description**: <actual_description>
+        - **Evidence**: <actual_evidence>
+        - **Impact**: <actual_impact>
+        - **Attack Vector**: <actual_attack_vector>
 
         ### 🟠 High Vulnerabilities
 
-        #### VULN-002: Directory Listing Enabled
-        - **URL**: https://{target_domain}/directory/
-        - **Description**: Web server has directory listing enabled, exposing sensitive files and directory structure.
-        - **Evidence**: Accessing the /directory/ path displays a list of all files, including .env files.
-        - **Impact**: Attackers can access sensitive configuration files, backup files, and source code not intended for public access.
-        - **Attack Vector**: Direct browser access to view all files and navigate to sensitive content:
-        ```
-        https://{target_domain}/directory/.env
-        https://{target_domain}/directory/backup/
-        ```
+        <Include only if high vulnerabilities were found>
 
         ### 🟡 Medium Vulnerabilities
 
-        #### VULN-003: Sensitive Path Disclosure via Robots.txt
-        - **URL**: https://{target_domain}/robots.txt
-        - **Description**: The robots.txt file reveals sensitive directories and admin interface locations.
-        - **Evidence**:
-        ```
-        User-agent: *
-        Disallow: /admin/
-        Disallow: /internal/
-        Disallow: /backup/
-        ```
-        - **Impact**: Exposes important paths and potential attack surfaces to attackers.
-        - **Attack Vector**: Attackers can directly access these URLs:
-        ```
-        https://{target_domain}/admin/
-        https://{target_domain}/internal/
-        https://{target_domain}/backup/
-        ```
+        <Include only if medium vulnerabilities were found>
 
-        ## 4. Attack Scenarios
+        ### 🔵 Low Vulnerabilities
 
-        ### Scenario 1: Database Access and User Information Theft
-        1. Attacker obtains database credentials from the exposed configuration file (VULN-001)
-        2. Remotely connects to the database and accesses user tables
-        3. Downloads all user information (emails, password hashes, personal data)
-        4. Attempts to crack password hashes or hijack accounts
+        <Include only if low vulnerabilities were found>
 
-        ### Scenario 2: API Manipulation and Admin Access
-        1. Uses the exposed API key (VULN-001) to send authenticated requests to the API
-        2. Explores API for privilege escalation possibilities
-        3. Creates admin account or modifies permissions of existing accounts
-        4. Accesses admin interface (VULN-003) to take complete control of the system
+        ## 3. Attack Scenarios
+
+        <Include only if vulnerabilities were found>
+        
+        ### Scenario 1: <attack_scenario_title>
+        <description_of_attack_scenario>
+        
+        ### Scenario 2: <attack_scenario_title>
+        <description_of_attack_scenario>
         """,
         agent=agents["writer"],
     )
