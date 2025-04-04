@@ -23,48 +23,38 @@ def task(target_domain, agents):
         11. site:{target_domain} (inurl:url | inurl:continue | inurl:returnto | inurl:redirect | inurl:return | inurl:target | inurl:site | inurl:view | inurl:path)
         12. (site:*.s3.amazonaws.com | site:*.s3-external-1.amazonaws.com | site:*.s3.dualstack.us-east-1.amazonaws.com | site:*.s3.ap-south-1.amazonaws.com) "{target_domain}"
 
+        ## Execution Process - YOU MUST FOLLOW THIS
+        1. Execute EACH of the 12 queries in sequence - DO NOT SKIP ANY QUERIES
+        2. Document results for each query even if it returns nothing
+        3. Continue until ALL 12 queries have been executed
+        4. Only then compile final results
+
         ## Search Guidelines
         - Execute each query exactly in the format specified above.
-        - If a query returns no results, immediately proceed to the next query.
+        - If a query returns no results, immediately proceed to the next google dork.
         - ONLY report URLs that you ACTUALLY find in the search results.
         - NEVER fabricate or hallucinate any URLs or search results.
         - If all queries return no results, return empty results list.
-        - For each URL found, provide a brief description of the actual content.
-
-        ## Exclusion Criteria
-        Exclude results if the URL, title, or filename contains any of the following keywords (high likelihood of false positives):
-        - "Advertisement", "Agreement", "Terms and conditions", "Terms of Use"
-        - "API Docs", "Forum", "Help", "Community", "Code of Conduct"
-        - "Developers", "Statement", "Support", "Rules", "example", "sample", "demo", "test"
-        - "Guideline", "Template", "dummy", "placeholder"
-        
-        Pay special attention to filtering out:
-        - Files with names containing "example_", "sample_", "test_", "demo_"
-        - Files that appear to be templates, training materials, or examples
-        - Documentation examples, test data, and dummy content
-
-        ## Important Notes
         - Search only within the provided domain; do not expand the search scope.
-        - Do not use queries other than the dork queries provided above.
-        - Provide all URLs in exact full URL format.
-        - Indicate when a query was executed even if it yielded no results.
-        - NEVER generate fictional findings or examples - only report what you actually find.
-        
-        ## Content Validation
-        For each potentially sensitive file found, perform the following checks:
-        - Examine the filename for indicators that it might be example data (e.g., "example_", "sample_", "demo_")
-        - Check if the data appears to be realistic or if it seems to be placeholder/dummy data
-        - If the file contains user information, check if it appears to be real user data or training examples
-        - Look for clues in the file metadata or content suggesting it's for instructional purposes
-        - Assess whether data patterns look genuine (random distribution) or artificial (patterns like "user1", "user2", etc.)
-        
-        Only report files that appear to contain genuine sensitive information, not example data.
+      
+        ## Exclusion Criteria
+        - Exclude results containing the following keywords (high false positive likelihood):
+          * Common documents: "Advertisement", "Agreement", "Terms", "Policy", "License"
+          * Support materials: "API Docs", "Forum", "Help", "Community", "Code of Conduct"
+          * Development content: "Developers", "Statement", "Support", "Rules", "Docs"
+          * Test content: "example", "sample", "demo", "test", "dummy", "placeholder"
+          * Documents: "Guideline", "Template", "Documentation"
+
+        - Also exclude:
+          * Files with naming patterns like "example_*", "sample_*", "test_*", "demo_*"
+          * Content that appears non-production (sequential IDs, test@example.com)
+          * Content with artificial data patterns (user1, user2, etc.)
+          * Training materials or documentation examples
         """,
         expected_output=f"""
         <findings>
         [
           {{
-            "domain": "{target_domain}",
             "total_queries": <number_of_queries_executed>,
             "queries_with_results": <number_of_queries_with_results>,
             "total_urls_found": <number_of_urls_found>,
