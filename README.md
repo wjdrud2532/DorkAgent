@@ -16,12 +16,15 @@
 > pip install -r requirements_windows.txt # for Windows
 ```
 
-3. Config API keys in `.env` file 
-Set either OpenAI or Anthropic API key. Also, you can add any types of LLM https://docs.crewai.com/concepts/llms
+3. Configure API keys in the `.env` file  
+- `SERPER_API_KEY` is **required**  
+- You must set at least **one** LLM API key (e.g., OpenAI, Anthropic, or Gemini) depending on your preference  
+- You can also integrate other LLMs: https://docs.crewai.com/concepts/llms
 ```bash
-SERPER_API_KEY= # https://serper.dev/
-OPENAI_API_KEY= 
-ANTHROPIC_API_KEY=
+SERPER_API_KEY=        # Required - https://serper.dev/
+OPENAI_API_KEY=        # Optional - set if using OpenAI
+ANTHROPIC_API_KEY=     # Optional - set if using Anthropic
+GEMINI_API_KEY=        # Optional - set if using Gemini
 ```
 
 4. Run `dorkagent.py`
@@ -39,7 +42,7 @@ class SerperDevTool(BaseTool):
     n_results: int = 10 # min: 10, max: 100
     ...
 ```
-2. Duration of googling (`serper_dev_tool.py`)
+2. Duration of google search results (`serper_dev_tool.py`)
 
 ```bash
 # https://serper.dev/playground
@@ -49,18 +52,22 @@ def _make_api_request(self, search_query: str, search_type: str) -> dict:
     payload = json.dumps({"q": search_query, "num": self.n_results, "qdr:m"}) # Past week: "qdr:w", Past month: "qdr:m"
     ...
 ```
-3. Google dorks (`tasks.py`)
+3. Google dorks (`task()`)
 ```bash
 # Reference https://github.com/TakSec/google-dorks-bug-bounty
 ```
-4. Agents (`agent.py`)
+4. Agents (`agents()`)
 ```bash
 # https://docs.crewai.com/concepts/agents
 ```
 
 ## TODO
 - Support for Telegram bot
-- Logging Options
+- Customizable Google Dorks set
+- Other Dorks (Github, DuckDuckGo ...)
+- Task/Agent for Validation
+
 
 ## Update Log
 - **2025-04-01**: Added hybrid LLM option (GPT & Claude); Added dork `intitle:"IIS Windows Server"`; Applied prompt engineering to tasks.py; Added default depth consideration for subdomain inputs; Added `requirements.txt` for Windows/MacOS compatibility
+- **2025-04-17**: Removed tasks(old).py, the version prior to prompt engineering; Deleted Google Dork for finding “Confidential” documents (most results were merely informative); Removed Google Dork targeting login panels; Added settings to help avoid LLM provider rate limits; Integrated Gemini Flash 2.0 (free to use and currently considered the best value LLM); Merged tasks.py and agents.py into dorkagent.py for simplified maintenance
