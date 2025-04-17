@@ -1,7 +1,7 @@
 # DorkAgent
 🤖 LLM-powered agent for automated Google Dorking in bug hunting &amp; pentesting.
 
-<img src="banner.png" alt="banner" width="1000">                   
+<img src="banner.png" alt="banner" width="700">                   
                                                                                                     
 ## Usage
 1. Git clone
