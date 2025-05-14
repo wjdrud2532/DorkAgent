@@ -129,6 +129,18 @@ def select_depth():
         else:
             print("❌ Invalid choice. Please enter 1 - 4.")
 
+def integrate_notify(): 
+    while True: 
+        print("\n") 
+        print("\n") 
+ 
+        notify = input("[?] Do you want to send a report using notify? (Y or N): ").strip() 
+         
+        if notify in ["Y", "y", "N", "n"]: 
+            return notify 
+        else: 
+            print("❌ Invalid choice. Please enter Y or N")
+
 def adjust_depth(target_domains, depth):
     try:
         depth = int(depth)  
@@ -209,13 +221,14 @@ def task(target_domain, agents):
         8. site:{target_domain} (inurl:/download.jsp | inurl:/downloads.jsp | inurl:/upload.jsp) | inurl:/uploads.jsp | inurl:/download.php | inurl:/downloads.php | inurl:/upload.php) | inurl:/uploads.php)
         9. site:{target_domain} (inurl:index.php?page | inurl:file | inurl:inc | inurl:layout | inurl:template | inurl:content | inurl:module)
         10. site:{target_domain} (ext:pdf | ext:doc | ext:docx | ext:ppt | ext:pptx) (intext:"join.slack" | intext:"t.me" | intext:"trello.com/invite" | intext:"notion.so" | intext:"atlassian.net" | intext:"asana.com" | intext:"teams.microsoft.com" | intext:"zoom.us/j" | intext:"bit.ly")
-        11. site:{target_domain} (inurl:url | inurl:continue | inurl:returnto | inurl:redirect | inurl:return | inurl:target | inurl:site | inurl:view | inurl:path)
+        11. site:{target_domain} (inurl:url= | inurl:continue= | inurl:redirect | inurl:return | inurl:target | inurl:site= | inurl:view= | inurl:path | inurl:returl= | inurl:next= | inurl:fallback= | inurl:u= | inurl:goto= | inurl:link=)
         12. (site:*.s3.amazonaws.com | site:*.s3-external-1.amazonaws.com | site:*.s3.dualstack.us-east-1.amazonaws.com | site:*.s3.ap-south-1.amazonaws.com) "{target_domain}"
+        13. site:{target_domain} inurl:eyJ (inurl:token | inurl:jwt | inurl:access | inurl:auth | inurl:authorization | inurl:secret)
 
         ## Execution Process - YOU MUST FOLLOW THIS
-        1. Execute EACH of the 12 queries in sequence - DO NOT SKIP ANY QUERIES
+        1. Execute EACH of the 13 queries in sequence - DO NOT SKIP ANY QUERIES
         2. Document results for each query even if it returns nothing
-        3. Continue until ALL 12 queries have been executed
+        3. Continue until ALL 13 queries have been executed
         4. Only then compile final results
 
         ## Search Guidelines
@@ -532,6 +545,9 @@ if __name__ == "__main__":
     depth = select_depth()
     target_domains = adjust_depth(domains, depth)
 
+    # Integrate notify 
+    notify = integrate_notify()
+
     # Make directory for logging
     date = datetime.now().strftime("%y%m%d")
     LOG_DIR = os.path.join("./log", date)
@@ -555,16 +571,23 @@ if __name__ == "__main__":
             agents=agents,  
             tasks=tasks, 
             verbose=1,
-            max_rpm=30,
+            max_rpm=15, # use 15, if you're using gemini free plan
             output_log_file=True,
         )
 
         print(f"Dorking on {original_domain}...")
 
         result = crew.kickoff()
-        print(f"Token Usage: {result.token_usage}")
 
-        report = os.path.join(LOG_DIR, f"{date}_{safe_domain}.md")
+        report = os.path.join(f"log/{date}", f"{date}_{safe_domain}.md")
+        
+        if notify.lower() in ["y"]: 
+            try: 
+                cmd = f'notify -bulk -p telegram -i "{report}"' 
+                os.system(cmd) 
+                print(f"Report sent successfully via notify!") 
+            except Exception as e: 
+                print(f"Error sending report via notify: {str(e)}")
 
         with open(report, "w", encoding="utf-8") as f:
             f.write(str(result))

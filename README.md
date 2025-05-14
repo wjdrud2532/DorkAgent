@@ -12,8 +12,7 @@
 2. Install packages
 ```bash
 # python version = 3.11.9
-> pip install -r requirements.txt # for macOS
-> pip install -r requirements_windows.txt # for Windows
+> pip install -r requirements.txt
 ```
 
 3. Configure API keys in the `.env` file  
@@ -31,6 +30,9 @@ GEMINI_API_KEY=        # Optional - set if using Gemini
 ```bash
 > python dorkagent.py
 ```
+
+For more description
+https://medium.com/@yee-yore/llm-powered-agent-for-automated-google-dorking-dcb14d609dc2
 
 ## Customize
 1. The number of google results (`serper_dev_tool.py` inside `site-packages/crewai_tools/tools/serper_dev_tool/`)
