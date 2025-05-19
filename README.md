@@ -1,7 +1,7 @@
 # DorkAgent
 🤖 LLM-powered agent for automated Google Dorking in bug hunting &amp; pentesting.
 
-<img src="banner.png" alt="banner" width="700">                   
+<img src="banner.gif" alt="banner" width="1000">                   
                                                                                                     
 ## Usage
 1. Git clone
@@ -23,7 +23,7 @@
 SERPER_API_KEY=        # Required - https://serper.dev/
 OPENAI_API_KEY=        # Optional - set if using OpenAI
 ANTHROPIC_API_KEY=     # Optional - set if using Anthropic
-GEMINI_API_KEY=        # Optional - set if using Gemini
+GEMINI_API_KEY=        # Optional - set if using Gemini (recommended)
 ```
 
 4. Run `dorkagent.py`
@@ -66,10 +66,11 @@ def _make_api_request(self, search_query: str, search_type: str) -> dict:
 ## TODO
 - Support for Telegram bot
 - Customizable Google Dorks set
-- Other Dorks (Github, DuckDuckGo ...)
 - Task/Agent for Validation
+- VPS mode
 
 
 ## Update Log
 - **2025-04-01**: Added hybrid LLM option (GPT & Claude); Added dork `intitle:"IIS Windows Server"`; Applied prompt engineering to tasks.py; Added default depth consideration for subdomain inputs; Added `requirements.txt` for Windows/MacOS compatibility
 - **2025-04-17**: Removed tasks(old).py, the version prior to prompt engineering; Deleted Google Dork for finding “Confidential” documents (most results were merely informative); Removed Google Dork targeting login panels; Added settings to help avoid LLM provider rate limits; Integrated Gemini Flash 2.0 (free to use and currently considered the best value LLM); Merged tasks.py and agents.py into dorkagent.py for simplified maintenance
+- **2025-05-18**: Modified README.md and banner, Added juicy google dorks, Medium article (https://medium.com/@yee-yore/llm-powered-agent-for-automated-google-dorking-dcb14d609dc2)

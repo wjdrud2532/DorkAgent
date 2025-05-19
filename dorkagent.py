@@ -15,12 +15,14 @@ def clear_terminal():
     os.system("cls" if os.name == "nt" else "clear")
 
 def display_banner():
+    print(" ")
+    print(" ")
     ascii_banner = pyfiglet.figlet_format("Dork Agent", font="big")
     print(colored(ascii_banner, "red"))
-    print(colored("                                        by yee-yore", "magenta"))
+    print(colored("                                        by yee-yore", "red"))
     print("\n")
     print("DorkAgent is a LLM-powered agent for automated Google Dorking in bug hunting & pentesting.")
-    print(colored("[Ver] Current DorkAgent version is v1.3", "cyan"))
+    print(colored("[Ver]", "red") + " Current DorkAgent version is v1.3")
     print("=" * 90)
 
 def verify_api_key(llm_type):
@@ -88,7 +90,7 @@ def get_target_domains():
         print("\n")
         print("1] Single Domain")
         print("2] Multi Domain (from file)")
-        print("\n")
+        print("\n") 
         
         choice = input("[?] Enter your target type (1 - 2): ").strip()
 
@@ -119,20 +121,19 @@ def select_depth():
         print("1] target.com")
         print("2] *.target.com")
         print("3] *.*.target.com")
-        print("4] *.*.*.target.com")
         print("\n")
-
-        depth = input("[?] Choose depth for dorking (1 - 4): ").strip()
+        depth = input("[?] Choose depth for dorking (1 - 3): ").strip()
         
-        if depth in ["1", "2", "3", "4"]:
+        if depth in ["1", "2", "3"]:
             return depth
         else:
-            print("❌ Invalid choice. Please enter 1 - 4.")
+            print("❌ Invalid choice. Please enter 1 - 3.")
 
 def integrate_notify(): 
     while True: 
         print("\n") 
         print("\n") 
+        print("\n")
  
         notify = input("[?] Do you want to send a report using notify? (Y or N): ").strip() 
          
@@ -201,14 +202,14 @@ def agents(llm):
 
     return [searcher, bughunter, writer]
 
-def task(target_domain, agents):
+def task(target_domain, domain, agents):
        
     task1 = Task(
         description=f"""
         # Google Dorking Search Analysis
 
         ## Objective
-        Execute the following Google Dork queries for the domain {target_domain} and collect ONLY REAL search results that actually exist.
+        Execute the following Google Dork queries for the domain {domain} and collect ONLY REAL search results that actually exist.
 
         ## Google Dork Query List
         1. site:{target_domain} (intitle:"index of /" | intitle:"docker-compose.yml" | intitle:".env" | intitle:"config.yml" | intitle:".git" | intitle:"package.json" | intitle:"requirements.txt" | intitle:".gitignore" | intitle:"IIS Windows Server")
@@ -222,13 +223,19 @@ def task(target_domain, agents):
         9. site:{target_domain} (inurl:index.php?page | inurl:file | inurl:inc | inurl:layout | inurl:template | inurl:content | inurl:module)
         10. site:{target_domain} (ext:pdf | ext:doc | ext:docx | ext:ppt | ext:pptx) (intext:"join.slack" | intext:"t.me" | intext:"trello.com/invite" | intext:"notion.so" | intext:"atlassian.net" | intext:"asana.com" | intext:"teams.microsoft.com" | intext:"zoom.us/j" | intext:"bit.ly")
         11. site:{target_domain} (inurl:url= | inurl:continue= | inurl:redirect | inurl:return | inurl:target | inurl:site= | inurl:view= | inurl:path | inurl:returl= | inurl:next= | inurl:fallback= | inurl:u= | inurl:goto= | inurl:link=)
-        12. (site:*.s3.amazonaws.com | site:*.s3-external-1.amazonaws.com | site:*.s3.dualstack.us-east-1.amazonaws.com | site:*.s3.ap-south-1.amazonaws.com) "{target_domain}"
+        12. (site:*.s3.amazonaws.com | site:*.s3-external-1.amazonaws.com | site:*.s3.dualstack.us-east-1.amazonaws.com | site:*.s3.ap-south-1.amazonaws.com) "{domain}"
         13. site:{target_domain} inurl:eyJ (inurl:token | inurl:jwt | inurl:access | inurl:auth | inurl:authorization | inurl:secret)
-
+        14. site:{target_domain} inurl:api (inurl:/v1/ | inurl:/v2/ | inurl:/v3/ | inurl:/v4/ | inurl:/v5/ | inurl:/rest)
+        15. site:{target_domain} (inurl:/graphql | inurl:/swagger)
+        16. site:{target_domain} inurl:"error" | intitle:"exception" | intitle:"failure" | intitle:"server at" | inurl:exception | "database error" | "SQL syntax" | "undefined index" | "unhandled exception" | "stack trace"
+        17. site:{target_domain} ext:log | ext:txt | ext:conf | ext:cnf | ext:ini | ext:env | ext:sh | ext:bak | ext:backup | ext:swp | ext:old | ext:~ | ext:git | ext:svn | ext:htpasswd | ext:htaccess | ext:json
+        18. site:openbugbounty.org inurl:reports intext:"{domain}"
+        19. (site:groups.google.com | site:googleapis.com | site:drive.google.com | site:dropbox.com | site:box.com | site:onedrive.live.com | site:firebaseio.com) "{domain}"
+        
         ## Execution Process - YOU MUST FOLLOW THIS
-        1. Execute EACH of the 13 queries in sequence - DO NOT SKIP ANY QUERIES
+        1. Execute EACH of the 19 queries in sequence - DO NOT SKIP ANY QUERIES
         2. Document results for each query even if it returns nothing
-        3. Continue until ALL 13 queries have been executed
+        3. Continue until ALL 19 queries have been executed
         4. Only then compile final results
 
         ## Search Guidelines
@@ -538,14 +545,18 @@ if __name__ == "__main__":
 
     # Get domain(s)
     clear_terminal()
+    display_banner()
     domains = get_target_domains()
 
     # Select depth
     clear_terminal()
+    display_banner()
     depth = select_depth()
     target_domains = adjust_depth(domains, depth)
 
-    # Integrate notify 
+    # Integrate notify
+    clear_terminal()
+    display_banner() 
     notify = integrate_notify()
 
     # Make directory for logging
@@ -553,7 +564,8 @@ if __name__ == "__main__":
     LOG_DIR = os.path.join("./log", date)
     os.makedirs(LOG_DIR, exist_ok=True)
 
-    for target_domain in target_domains:
+    for i, domain in enumerate(domains):
+        target_domain = target_domains[i]
         original_domain = target_domain 
         
         if '*' in target_domain:
@@ -565,7 +577,7 @@ if __name__ == "__main__":
         
         safe_domain = sanitize_filename(base_domain)
         
-        tasks = task(original_domain, agents)
+        tasks = task(original_domain, domain, agents)
 
         crew = Crew(
             agents=agents,  
