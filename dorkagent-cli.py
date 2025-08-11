@@ -1,16 +1,19 @@
-from dotenv import load_dotenv
+#!/usr/bin/env python3
+
+import argparse
+import sys
+import os
+import re
+import pyfiglet
+import time
+import schedule
 from datetime import datetime
+from dotenv import load_dotenv
 from crewai import Crew, LLM, Task, Agent
 from langchain_openai import ChatOpenAI
 from termcolor import colored
-from prompt_toolkit import prompt
-from prompt_toolkit.completion import PathCompleter
 from crewai_tools import SerperDevTool, ScrapeWebsiteTool
 
-import sys, re, os, pyfiglet
-
-def clear_terminal():
-    os.system("cls" if os.name == "nt" else "clear")
 
 def display_banner():
     print(" ")
@@ -23,12 +26,13 @@ def display_banner():
     print(colored("[Ver]", "red") + " Current DorkAgent version is v1.3")
     print("=" * 90)
 
+
 def verify_api_key(llm_type):
     required_keys = ["SERPER_API_KEY"]
 
-    if llm_type == "openai":
+    if llm_type == "gpt":
         required_keys.append("OPENAI_API_KEY")
-    elif llm_type == "anthropic":
+    elif llm_type == "claude":
         required_keys.append("ANTHROPIC_API_KEY")
     elif llm_type == "gemini":
         required_keys.append("GEMINI_API_KEY")
@@ -37,116 +41,63 @@ def verify_api_key(llm_type):
 
     missing_keys = [key for key in required_keys if not os.getenv(key)]
     if missing_keys:
-        print("🚨 Missing required API keys:")
+        print("Missing required API keys:")
         for key in missing_keys:
-            print(f"   ❌ {key} is not set")
+            print(f"   {key} is not set")
         print("\nPlease check your .env file and set the missing keys.")
         sys.exit(1)
 
-def select_llm():
-    ClaudeHaiku = LLM(
-        api_key=os.getenv('ANTHROPIC_API_KEY'),
-        model='anthropic/claude-3-5-haiku-20241022',
-    )
 
-    GPT4oMini = ChatOpenAI(
-        model_name="gpt-4o-mini-2024-07-18", 
-        temperature=0
-    )
+def get_llm(llm_type):
+    if llm_type == "gpt":
+        return ChatOpenAI(
+            model_name="gpt-4o-mini-2024-07-18", 
+            temperature=0
+        )
+    elif llm_type == "claude":
+        return LLM(
+            api_key=os.getenv('ANTHROPIC_API_KEY'),
+            model='anthropic/claude-3-5-haiku-20241022',
+        )
+    elif llm_type == "gemini":
+        return LLM(
+            api_key=os.getenv('GEMINI_API_KEY'),
+            model='gemini/gemini-2.0-flash',
+        )
+    else:
+        print(f"Unsupported LLM type: {llm_type}")
+        sys.exit(1)
 
-    GeminiFlash = LLM(
-        api_key=os.getenv('GEMINI_API_KEY'),
-        model='gemini/gemini-2.0-flash',
-    )
+
+def load_targets(target_input):
+    targets = []
     
-    while True:
-        print("\n")
-        print("1. GPT-4o Mini")
-        print("2. Claude 3.5 Haiku")
-        print("3. Gemini 2.0 Flash")
-        print("\n")
-        
-        choice = input("[?] Choose LLM for Agents (1 - 3): ").strip()
-        
-        if choice == "1":
-            return GPT4oMini, "openai"
-        elif choice == "2":
-            return ClaudeHaiku, "anthropic"
-        elif choice == "3":
-            return GeminiFlash, "gemini"
-        else:
-            print("❌ Invalid choice. Please enter 1 - 3.")
+    if os.path.isfile(target_input):
+        print(f"Loading targets from file: {target_input}")
+        try:
+            with open(target_input, "r", encoding="utf-8") as file:
+                for line in file:
+                    domain = line.strip()
+                    if domain:
+                        targets.append(domain)
+            print(f"Loaded {len(targets)} targets from file")
+        except Exception as e:
+            print(f"Error reading file {target_input}: {str(e)}")
+            sys.exit(1)
+    else:
+        targets.append(target_input)
+        print(f"Single target: {target_input}")
+    
+    return targets
 
-def get_file_path(prompt_text):
-    completer = PathCompleter()
-    return prompt(prompt_text, completer=completer).strip()
-
-def get_target_domains():
-    target_domains = []
-
-    while True:
-        print("\n")
-        print("1] Single Domain")
-        print("2] Multi Domain (from file)")
-        print("\n") 
-        
-        choice = input("[?] Enter your target type (1 - 2): ").strip()
-
-        if choice == "1":
-            domain = input("[?] Enter the target domain: ").strip()
-            target_domains.append(domain)
-            break
-            
-        elif choice == "2": 
-            file_path = get_file_path("[?] Enter the file path: ")
-            if os.path.isfile(file_path):
-                with open(file_path, "r", encoding="utf-8") as file:
-                    for line in file:
-                        domain = line.strip()
-                        target_domains.append(domain)
-                break 
-            else:
-                print("❌ File not found. Please enter a valid file path.")
-        
-        else:
-            print("🚨 Invalid choice. Please select 1 - 2.")
-
-    return target_domains
-
-def select_depth():
-    while True:
-        print("\n")
-        print("1] target.com")
-        print("2] *.target.com")
-        print("3] *.*.target.com")
-        print("\n")
-        depth = input("[?] Choose depth for dorking (1 - 3): ").strip()
-        
-        if depth in ["1", "2", "3"]:
-            return depth
-        else:
-            print("❌ Invalid choice. Please enter 1 - 3.")
-
-def integrate_notify(): 
-    while True: 
-        print("\n") 
-        print("\n") 
-        print("\n")
- 
-        notify = input("[?] Do you want to send a report using notify? (Y or N): ").strip() 
-         
-        if notify in ["Y", "y", "N", "n"]: 
-            return notify 
-        else: 
-            print("❌ Invalid choice. Please enter Y or N")
 
 def adjust_depth(target_domains, depth):
     try:
         depth = int(depth)  
-        if depth < 1:  
+        if depth < 1 or depth > 3:  
             raise ValueError("Invalid depth value")
     except ValueError:
-        print("❌ Invalid depth input. Defaulting to depth = 1.")
+        print("Invalid depth input. Must be 1, 2, or 3. Defaulting to depth = 1.")
         depth = 1
 
     if depth == 1:
@@ -157,16 +108,14 @@ def adjust_depth(target_domains, depth):
 
     return adjusted_domains
 
-def sanitize_filename(domain_name):
 
-    # '*' -> 'wildcard'
+def sanitize_filename(domain_name):
     sanitized = domain_name.replace('*', 'wildcard')
     sanitized = re.sub(r'[\\/*?:"<>|]', '', sanitized)
-    
     return sanitized
 
-def agents(llm):
 
+def agents(llm):
     searcher = Agent(
         role="searcher",
         goal="Performing advanced Google searches using Google Dorks",
@@ -201,8 +150,9 @@ def agents(llm):
 
     return [searcher, bughunter, writer]
 
+
 def task(target_domain, domain, agents):
-       
+    
     task1 = Task(
         description=f"""
         # Google Dorking Search Analysis
@@ -296,7 +246,6 @@ def task(target_domain, domain, agents):
             "queries_with_results": <number_of_queries_with_results>,
             "total_urls_found": <number_of_urls_found>,
             "results": [
-              // Only include this section if results were actually found
               {{
                 "query_index": <index_of_query>,
                 "query": "<exact_query_executed>",
@@ -306,10 +255,8 @@ def task(target_domain, domain, agents):
                     "title": "<actual_page_title>",
                     "description": "<brief_description_of_actual_content>"
                   }}
-                  // Additional URLs if found
                 ]
               }}
-              // Additional queries with results
             ],
             "queries_without_results": [<indices_of_queries_that_returned_no_results>]
           }}
@@ -406,7 +353,6 @@ def task(target_domain, domain, agents):
             "total_vulnerabilities": <number_of_vulnerabilities_found>,
             "total_excluded": <number_of_urls_excluded>,
             "vulnerabilities": [
-              // Only include if actual vulnerabilities were found based on real results
               {{
                 "type": "<vulnerability_type>",
                 "subtype": "<vulnerability_subtype>",
@@ -418,15 +364,12 @@ def task(target_domain, domain, agents):
                 "exploit_vector": "<how_the_vulnerability_could_be_exploited>",
                 "remediation": "<recommended_fix>"
               }}
-              // Additional vulnerabilities if found
             ],
             "excluded_urls": [
-              // Only include if URLs were excluded
               {{
                 "url": "<excluded_url>",
                 "reason": "<reason_for_exclusion>"
               }}
-              // Additional excluded URLs
             ]
           }}
         ]
@@ -668,79 +611,200 @@ def task(target_domain, domain, agents):
         """,
         agent=agents[2],
     )
+    
     return [task1, task2, task3]
 
-if __name__ == "__main__":
 
-    # Display banner
-    clear_terminal()
-    display_banner()
+def send_notification(report_path):
+    try:
+        cmd = f'notify -bulk -p telegram -i "{report_path}"'
+        result = os.system(cmd)
+        if result == 0:
+            print(f"Report sent successfully via telegram!")
+        else:
+            print(f"Notify command returned code: {result}")
+    except Exception as e:
+        print(f"Error sending report via notify: {str(e)}")
 
-    # Select LLM
-    llm, llm_type = select_llm()
-    agents = agents(llm)
 
-    # API KEY verification
-    load_dotenv()
-    verify_api_key(llm_type)
-
-    # Get domain(s)
-    clear_terminal()
-    display_banner()
-    domains = get_target_domains()
-
-    # Select depth
-    clear_terminal()
-    display_banner()
-    depth = select_depth()
-    target_domains = adjust_depth(domains, depth)
-
-    # Integrate notify
-    clear_terminal()
-    display_banner() 
-    notify = integrate_notify()
-
-    # Make directory for logging
+def run_dorking_analysis(args, domains, target_domains):
+    llm = get_llm(args.llm_type)
+    agent_list = agents(llm)
+    
     date = datetime.now().strftime("%y%m%d")
+    time_stamp = datetime.now().strftime("%H%M")
     LOG_DIR = os.path.join("./log", date)
     os.makedirs(LOG_DIR, exist_ok=True)
-
+    
+    results = []
+    
     for i, domain in enumerate(domains):
         target_domain = target_domains[i]
-        original_domain = target_domain 
+        original_domain = target_domain
         
         if '*' in target_domain:
             domain_parts = target_domain.split('.')
-            base_domain = domain_parts[1]  
+            base_domain = domain_parts[1] if len(domain_parts) > 1 else domain_parts[0]
         else:
-            domain = target_domain.split('.', maxsplit=target_domain.count('.'))[-1]
             base_domain = target_domain
         
         safe_domain = sanitize_filename(base_domain)
         
-        tasks = task(original_domain, domain, agents)
-
+        if args.vps:
+            print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [{i+1}/{len(domains)}] Processing: {original_domain}")
+        else:
+            print(f"\n[{i+1}/{len(domains)}] Processing: {original_domain}")
+        
+        tasks = task(original_domain, domain, agent_list)
+        
         crew = Crew(
-            agents=agents,  
-            tasks=tasks, 
-            verbose=1,
-            max_rpm=15, # use 15, if you're using gemini free plan
+            agents=agent_list,
+            tasks=tasks,
+            verbose=1 if args.verbose else 0,
+            max_rpm=15,
             output_log_file=True,
         )
-
-        print(f"Dorking on {original_domain}...")
-
-        result = crew.kickoff()
-
-        report = os.path.join(f"log/{date}", f"{date}_{safe_domain}.md")
         
-        with open(report, "w", encoding="utf-8") as f:
-            f.write(str(result))
+        print(f"Starting Google Dorking analysis...")
+        
+        try:
+            result = crew.kickoff()
+            
+            if args.vps:
+                report_filename = f"{date}_{time_stamp}_{safe_domain}.md"
+            else:
+                report_filename = f"{date}_{safe_domain}.md"
+                
+            report_path = os.path.join(LOG_DIR, report_filename)
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write(str(result))
+            
+            print(f"Report saved: {report_path}")
+            results.append(report_path)
+            
+            if args.notify or args.vps:
+                send_notification(report_path)
+                
+        except Exception as e:
+            print(f"Error processing {original_domain}: {str(e)}")
+            continue
+    
+    return results
 
-        if notify.lower() in ["y"]: 
-            try: 
-                cmd = f'notify -bulk -p telegram -i "{report}"' 
-                os.system(cmd) 
-                print(f"Report sent successfully via notify!") 
-            except Exception as e: 
-                print(f"Error sending report via notify: {str(e)}")
+
+def schedule_job(args, domains, target_domains):
+    print(f"\nScheduled job started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    run_dorking_analysis(args, domains, target_domains)
+    print(f"Scheduled job completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Next execution in {args.vps} hour(s)")
+    print("=" * 60)
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description="DorkAgent - LLM-powered Google Dorking tool for bug hunting & pentesting",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python dorkagent.py -llm gpt -t example.com -d 1
+  python dorkagent.py -llm claude -tl domains.txt -d 2 -notify
+  python dorkagent.py -llm gemini -t subdomain.example.com -d 3 -notify -v
+  python dorkagent.py -llm gpt -tl domains.txt -d 1 -vps 1
+  python dorkagent.py -llm claude -t example.com -d 2 -vps 6
+        """
+    )
+    
+    parser.add_argument('-llm', '--llm-type', 
+                       required=True,
+                       choices=['gpt', 'claude', 'gemini'],
+                       help='LLM type to use (gpt/claude/gemini)')
+    
+    target_group = parser.add_mutually_exclusive_group(required=True)
+    target_group.add_argument('-t', '--target',
+                             help='Single target domain (e.g., example.com)')
+    target_group.add_argument('-tl', '--target-list',
+                             help='Path to file containing list of target domains')
+    
+    parser.add_argument('-d', '--depth',
+                       type=int,
+                       choices=[1, 2, 3],
+                       default=1,
+                       help='Search depth: 1=target.com, 2=*.target.com, 3=*.*.target.com (default: 1)')
+    
+    parser.add_argument('-notify', '--notify',
+                       action='store_true',
+                       help='Send report via notify tool')
+    
+    parser.add_argument('-vps', '--vps',
+                       type=int,
+                       metavar='HOURS',
+                       help='VPS mode: Run periodically every N hours and send results via telegram (e.g., -vps 1 for every hour)')
+    
+    parser.add_argument('-v', '--verbose',
+                       action='store_true',
+                       help='Enable verbose output')
+    
+    return parser.parse_args()
+
+
+def main():
+    args = parse_arguments()
+    
+    display_banner()
+    
+    print(f"Using LLM: {args.llm_type.upper()}")
+    print(f"Depth level: {args.depth}")
+    if args.notify:
+        print("Notification: Enabled")
+    if args.verbose:
+        print("Verbose mode: Enabled")
+    if args.vps:
+        print(f"VPS mode: Every {args.vps} hour(s) with telegram notifications")
+    print("=" * 50)
+    
+    verify_api_key(args.llm_type)
+    print("API keys verified")
+    
+    if args.target:
+        target_input = args.target
+    else:
+        target_input = args.target_list
+    
+    domains = load_targets(target_input)
+    target_domains = adjust_depth(domains, args.depth)
+    
+    print(f"Processing {len(domains)} domain(s) with depth {args.depth}")
+    print("=" * 50)
+    
+    if args.vps:
+        print(f"Starting VPS mode - Running every {args.vps} hour(s)")
+        print("Results will be automatically sent via telegram")
+        print("Press Ctrl+C to stop")
+        print("=" * 60)
+        
+        schedule.every(args.vps).hours.do(schedule_job, args, domains, target_domains)
+        
+        print("Running initial analysis...")
+        run_dorking_analysis(args, domains, target_domains)
+        
+        try:
+            while True:
+                schedule.run_pending()
+                time.sleep(60)
+        except KeyboardInterrupt:
+            print(f"\nVPS mode stopped by user at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            return
+    
+    else:
+        run_dorking_analysis(args, domains, target_domains)
+        date = datetime.now().strftime("%y%m%d")
+        LOG_DIR = os.path.join("./log", date)
+        print(f"\nAnalysis complete! Reports saved in: {LOG_DIR}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"\nFatal error: {str(e)}")
+        sys.exit(1)

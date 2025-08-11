@@ -13,6 +13,8 @@
 ```bash
 # python version = 3.11.9
 > pip install -r requirements.txt
+or
+> pip install python-dotenv crewai crewai-tools langchain-openai termcolor prompt-toolkit pyfiglet schedule
 ```
 
 3. Configure API keys in the `.env` file  
@@ -51,7 +53,7 @@ class SerperDevTool(BaseTool):
 
 def _make_api_request(self, search_query: str, search_type: str) -> dict:
     ...
-    payload = json.dumps({"q": search_query, "num": self.n_results, "qdr:m"}) # Past week: "qdr:w", Past month: "qdr:m"
+    payload = json.dumps({"q": search_query, "num": self.n_results, "tbs": "qdr:m"}) # Past week: "qdr:w", Past month: "qdr:m"
     ...
 ```
 3. Google dorks (`task()`)
