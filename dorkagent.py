@@ -43,7 +43,7 @@ def warn_python_version():
 
     required_major, required_minor, required_patch = 3, 11, 9
     v = sys.version_info
-    
+
     if (v.major, v.minor) != (required_major, required_minor) or v.micro != required_patch:
         print(f"[!] Detected Python {v.major}.{v.minor}.{v.micro}. Recommended: 3.11.9.")
         print("[!] Continuing, but if you see issues, use Python 3.11.9.")
@@ -86,6 +86,7 @@ def ensure_packages():
     # Install any still-missing packages individually
     for pip_name in missing:
         pip_install(pip_name)
+
     # Final import verification
     for _, import_name in REQUIRED_PACKAGES.items():
         importlib.import_module(import_name)
@@ -170,13 +171,15 @@ def ensure_api_keys(llm_type: str):
         # Reload environment so subsequent code can read keys
         load_dotenv(dotenv_path=ENV_PATH, override=True)
 
-# Load environment early so model constructors see keys
-load_dotenv()
 
 def clear_terminal():
+    """Clear the terminal screen."""
+
     os.system("cls" if os.name == "nt" else "clear")
 
 def display_banner():
+    """Display the DorkAgent banner and version information."""
+
     print(" ")
     print(" ")
     ascii_banner = pyfiglet.figlet_format("Dork Agent", font="big")
@@ -187,7 +190,9 @@ def display_banner():
     print(colored("[Ver]", "red") + " Current DorkAgent version is v1.3")
     print("=" * 90)
 
-def verify_api_key(llm_type):
+
+def verify_api_key(llm_type: str):
+    """Verify required API keys are set."""
 
     required_keys = ["SERPER_API_KEY"]
 
@@ -203,25 +208,27 @@ def verify_api_key(llm_type):
     missing_keys = [key for key in required_keys if not os.getenv(key)]
 
     if missing_keys:
-        print(" Missing required API keys:")
+        print("[!] Missing required API keys:")
         for key in missing_keys:
-            print(f"   ??{key} is not set")
+            print(f"    - {key} is not set")
         print("\nPlease check your .env file and set the missing keys.")
         sys.exit(1)
 
-def select_llm():
 
-    ClaudeHaiku = LLM(
+def select_llm():
+    """Select and configure the LLM for agents."""
+
+    claude_haiku = LLM(
         api_key=os.getenv('ANTHROPIC_API_KEY'),
         model='anthropic/claude-3-5-haiku-20241022',
     )
 
-    GPT4oMini = ChatOpenAI(
-        model_name="gpt-4o-mini-2024-07-18", 
+    gpt4o_mini = ChatOpenAI(
+        model_name="gpt-4o-mini-2024-07-18",
         temperature=0
     )
 
-    GeminiFlash = LLM(
+    gemini_flash = LLM(
         api_key=os.getenv('GEMINI_API_KEY'),
         model='gemini/gemini-2.0-flash',
     )
@@ -236,21 +243,24 @@ def select_llm():
         choice = input("[?] Choose LLM for Agents (1 - 3): ").strip()
         
         if choice == "1":
-            return GPT4oMini, "openai"
+            return gpt4o_mini, "openai"
         elif choice == "2":
-            return ClaudeHaiku, "anthropic"
+            return claude_haiku, "anthropic"
         elif choice == "3":
-            return GeminiFlash, "gemini"
+            return gemini_flash, "gemini"
         else:
-            print("Invalid choice. Please enter 1 - 3.")
+            print("[!] Invalid choice. Please enter 1 - 3.")
 
-def get_file_path(prompt_text):
+
+def get_file_path(prompt_text: str) -> str:
+    """Get file path with autocomplete support."""
 
     completer = PathCompleter()
-
     return prompt(prompt_text, completer=completer).strip()
 
-def get_target_domains():
+
+def get_target_domains() -> list:
+    """Get target domains from user input."""
 
     target_domains = []
 
@@ -276,14 +286,16 @@ def get_target_domains():
                         target_domains.append(domain)
                 break 
             else:
-                print("??File not found. Please enter a valid file path.")
+                print("[!] File not found. Please enter a valid file path.")
         
         else:
-            print(" Invalid choice. Please select 1 - 2.")
+            print("[!] Invalid choice. Please select 1 - 2.")
 
     return target_domains
 
-def select_depth():
+
+def select_depth() -> str:
+    """Select search depth for dorking."""
 
     while True:
         print("\n")
@@ -296,13 +308,13 @@ def select_depth():
         if depth in ["1", "2", "3"]:
             return depth
         else:
-            print("Invalid choice. Please enter 1 - 3.")
+            print("[!] Invalid choice. Please enter 1 - 3.")
 
-def integrate_notify(): 
 
-    while True: 
-        print("\n") 
-        print("\n") 
+def integrate_notify() -> str:
+    """Ask user if they want to integrate notify tool."""
+
+    while True:
         print("\n")
  
         notify = input("[?] Do you want to send a report using notify? (Y or N): ").strip() 
@@ -310,16 +322,18 @@ def integrate_notify():
         if notify in ["Y", "y", "N", "n"]: 
             return notify 
         else: 
-            print("??Invalid choice. Please enter Y or N")
+            print("[!] Invalid choice. Please enter Y or N")
 
-def adjust_depth(target_domains, depth):
+
+def adjust_depth(target_domains: list, depth: str) -> list:
+    """Apply subdomain wildcard patterns based on depth selection."""
 
     try:
         depth = int(depth)  
         if depth < 1:  
             raise ValueError("Invalid depth value")
     except ValueError:
-        print("??Invalid depth input. Defaulting to depth = 1.")
+        print("[!] Invalid depth input. Defaulting to depth = 1.")
         depth = 1
 
     if depth == 1:
@@ -330,15 +344,18 @@ def adjust_depth(target_domains, depth):
 
     return adjusted_domains
 
-def sanitize_filename(domain_name):
 
-    # '*' -> 'wildcard'
+def sanitize_filename(domain_name: str) -> str:
+    """Sanitize domain name for safe file paths."""
+
     sanitized = domain_name.replace('*', 'wildcard')
     sanitized = re.sub(r'[\\/*?:"<>|]', '', sanitized)
     
     return sanitized
 
-def agents(llm):
+
+def agents(llm) -> list:
+    """Create and configure CrewAI agents."""
 
     searcher = Agent(
         role="searcher",
@@ -374,10 +391,10 @@ def agents(llm):
 
     return [searcher, bughunter, writer]
 
-# Removed min/max interactive configuration and system prompt per request
 
-def task(target_domain, domain, agents):
-       
+def task(target_domain: str, domain: str, agents: list) -> list:
+    """Create tasks for the CrewAI workflow."""
+
     task1 = Task(
         description=f"""
         # Google Dorking Search Analysis
@@ -664,7 +681,7 @@ def task(target_domain, domain, agents):
 
         ## Formatting Requirements
         - Use clear section headers and professional formatting
-        - Include severity icons: ?뵶 Critical, ?윝 High, ?윞 Medium, ?뵷 Low, ?뱄툘 Info
+        - Include severity labels: [CRITICAL], [HIGH], [MEDIUM], [LOW], [INFO]
         - Assign unique IDs: AV-001 (Attack Vector), ID-001 (Information Disclosure)
         - Use tables for risk matrices and summaries
         - Include actionable commands and URLs where relevant
@@ -687,11 +704,11 @@ def task(target_domain, domain, agents):
         **Target Scope**: {target_domain}
         
         **Risk Distribution:**
-        -  Critical: <critical_count> findings
-        -  High: <high_count> findings  
-        -  Medium: <medium_count> findings
-        -  Low: <low_count> findings
-        -  Informational: <info_count> findings
+        - [CRITICAL]: <critical_count> findings
+        - [HIGH]: <high_count> findings
+        - [MEDIUM]: <medium_count> findings
+        - [LOW]: <low_count> findings
+        - [INFO]: <info_count> findings
 
         **Key Attack Vectors Discovered:**
         - <primary_attack_vector_1>
@@ -778,8 +795,8 @@ def task(target_domain, domain, agents):
 
         | Finding ID | Type | Severity | Exploitability | Business Impact | Priority |
         |------------|------|----------|----------------|-----------------|----------|
-        | AV-001 | <type> |  Critical | Easy | High | 1 |
-        | ID-001 | <type> |  High | N/A | Medium | 2 |
+        | AV-001 | <type> | [CRITICAL] | Easy | High | 1 |
+        | ID-001 | <type> | [HIGH] | N/A | Medium | 2 |
 
         ---
 
@@ -845,8 +862,9 @@ def task(target_domain, domain, agents):
     )
     return [task1, task2, task3]
 
-# Override select_llm with env-validated constructor
-def select_llm():
+
+def select_llm_with_validation():
+    """Select LLM with API key validation."""
 
     while True:
         print("\n")
@@ -883,10 +901,10 @@ def select_llm():
             )
             return llm, llm_type
         else:
-            print("Invalid choice. Please enter 1 - 3.")
+            print("[!] Invalid choice. Please enter 1 - 3.")
+
 
 if __name__ == "__main__":
-
     # Display banner
     clear_terminal()
     display_banner()
@@ -894,7 +912,7 @@ if __name__ == "__main__":
     # Select LLM
     llm, llm_type = select_llm()
 
-    # API KEY verification
+    # API key verification
     load_dotenv()
     verify_api_key(llm_type)
 
