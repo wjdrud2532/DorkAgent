@@ -114,7 +114,7 @@ class SerperDevTool(BaseTool):
 ```bash
 # https://serper.dev/playground
 
-def _make_api_request(self, search_query: str, search_type: str) -> dict:
+def make_api_request(self, search_query: str, search_type: str) -> dict:
     ...
     payload = json.dumps({"q": search_query, "num": self.n_results, "tbs": "qdr:m"}) # Past week: "qdr:w", Past month: "qdr:m"
     ...

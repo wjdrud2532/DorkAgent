@@ -1,30 +1,9 @@
-# Standard library
-import getpass
-import importlib
+import sys
 import os
 import re
 import subprocess
-import sys
+import getpass
 from datetime import datetime
-
-# Third-party
-THIRD_PARTY_IMPORT_ERROR = False
-try:
-    import pyfiglet
-    from crewai import Crew, LLM, Task, Agent
-    from crewai_tools import SerperDevTool, ScrapeWebsiteTool
-    from crewai.utilities.exceptions.context_window_exceeding_exception import (
-        LLMContextLengthExceededError,
-    )
-    from dotenv import load_dotenv
-    from langchain_openai import ChatOpenAI
-    from prompt_toolkit import prompt
-    from prompt_toolkit.completion import PathCompleter
-    from termcolor import colored
-except ImportError:
-    THIRD_PARTY_IMPORT_ERROR = True
-
-# Local modules
 
 # --- Runtime environment bootstrap: Python & packages ---
 REQUIRED_PACKAGES = {
@@ -39,18 +18,15 @@ REQUIRED_PACKAGES = {
 }
 
 def warn_python_version():
-    """Warn when the running Python version differs from the supported version."""
-
+    """Warn about the recommended Python version (3.11.9)."""
     required_major, required_minor, required_patch = 3, 11, 9
     v = sys.version_info
-    
     if (v.major, v.minor) != (required_major, required_minor) or v.micro != required_patch:
         print(f"[!] Detected Python {v.major}.{v.minor}.{v.micro}. Recommended: 3.11.9.")
         print("[!] Continuing, but if you see issues, use Python 3.11.9.")
 
 def pip_install(spec: str):
-    """Install a package via pip with console feedback."""
-
+    """Install a pip package given its spec string."""
     try:
         print(f"[+] Installing: {spec} ...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", spec])
@@ -59,10 +35,9 @@ def pip_install(spec: str):
         raise
 
 def ensure_packages():
-    """Ensure required third-party packages are available."""
-
+    """Ensure required third-party packages are installed and importable."""
+    import importlib
     missing = []
-
     for pip_name, import_name in REQUIRED_PACKAGES.items():
         try:
             importlib.import_module(import_name)
@@ -70,13 +45,11 @@ def ensure_packages():
             missing.append(pip_name)
 
     req_file = os.path.join(os.path.dirname(__file__), "requirements.txt")
-
     if missing and os.path.isfile(req_file):
         try:
             print(f"[+] Syncing dependencies from requirements.txt ...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", req_file, "--upgrade", "--upgrade-strategy", "only-if-needed"])
             missing = []  # reset and re-evaluate
-
             for pip_name, import_name in REQUIRED_PACKAGES.items():
                 importlib.import_module(import_name)
             return
@@ -94,18 +67,16 @@ def ensure_packages():
 warn_python_version()
 ensure_packages()
 
-if THIRD_PARTY_IMPORT_ERROR:
-    import pyfiglet
-    from crewai import Crew, LLM, Task, Agent
-    from crewai_tools import SerperDevTool, ScrapeWebsiteTool
-    from crewai.utilities.exceptions.context_window_exceeding_exception import (
-        LLMContextLengthExceededError,
-    )
-    from dotenv import load_dotenv
-    from langchain_openai import ChatOpenAI
-    from prompt_toolkit import prompt
-    from prompt_toolkit.completion import PathCompleter
-    from termcolor import colored
+# Import third-party modules after ensuring they are available
+from dotenv import load_dotenv
+from crewai import Crew, LLM, Task, Agent
+from langchain_openai import ChatOpenAI
+from termcolor import colored
+from prompt_toolkit import prompt
+from prompt_toolkit.completion import PathCompleter
+from crewai_tools import SerperDevTool, ScrapeWebsiteTool
+import pyfiglet
+from crewai.utilities.exceptions.context_window_exceeding_exception import LLMContextLengthExceededError
 
 # Load environment early so model constructors see keys
 load_dotenv()
@@ -113,10 +84,8 @@ load_dotenv()
 ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 
 def read_env_file(path: str) -> dict:
-    """Load key-value pairs from the .env file."""
-
+    """Read simple KEY=VALUE pairs from an env file path."""
     data = {}
-
     if os.path.isfile(path):
         try:
             with open(path, "r", encoding="utf-8") as f:
@@ -129,24 +98,19 @@ def read_env_file(path: str) -> dict:
                         data[k.strip()] = v.strip()
         except Exception:
             pass
-
     return data
 
 def write_env_file(path: str, values: dict):
-    """Persist environment variables to the .env file."""
-
+    """Merge and write KEY=VALUE pairs to the env file path."""
     existing = read_env_file(path)
     existing.update(values)
     lines = [f"{k}={existing[k]}" for k in sorted(existing.keys())]
-
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
 def ensure_api_keys(llm_type: str):
-    """Prompt for and store missing API keys."""
-
+    """Prompt for and persist missing API keys for the chosen LLM."""
     required_keys = ["SERPER_API_KEY"]
-
     if llm_type == "openai":
         required_keys.append("OPENAI_API_KEY")
     elif llm_type == "anthropic":
@@ -155,7 +119,6 @@ def ensure_api_keys(llm_type: str):
         required_keys.append("GEMINI_API_KEY")
 
     missing = [k for k in required_keys if not os.getenv(k)]
-
     if missing:
         print("[!] Missing required API keys: " + ", ".join(missing))
         provided = {}
@@ -174,9 +137,11 @@ def ensure_api_keys(llm_type: str):
 load_dotenv()
 
 def clear_terminal():
+    """Clear the terminal screen for Windows or POSIX."""
     os.system("cls" if os.name == "nt" else "clear")
 
 def display_banner():
+    """Render the DorkAgent ASCII banner and intro text."""
     print(" ")
     print(" ")
     ascii_banner = pyfiglet.figlet_format("Dork Agent", font="big")
@@ -188,7 +153,7 @@ def display_banner():
     print("=" * 90)
 
 def verify_api_key(llm_type):
-
+    """Verify required API keys are present in the environment."""
     required_keys = ["SERPER_API_KEY"]
 
     if llm_type == "openai":
@@ -201,16 +166,15 @@ def verify_api_key(llm_type):
     load_dotenv()
 
     missing_keys = [key for key in required_keys if not os.getenv(key)]
-
     if missing_keys:
-        print(" Missing required API keys:")
+        print("???Missing required API keys:")
         for key in missing_keys:
             print(f"   ??{key} is not set")
         print("\nPlease check your .env file and set the missing keys.")
         sys.exit(1)
 
 def select_llm():
-
+    """Interactively select an LLM backend for agents."""
     ClaudeHaiku = LLM(
         api_key=os.getenv('ANTHROPIC_API_KEY'),
         model='anthropic/claude-3-5-haiku-20241022',
@@ -245,13 +209,12 @@ def select_llm():
             print("Invalid choice. Please enter 1 - 3.")
 
 def get_file_path(prompt_text):
-
+    """Prompt with path completion and return the chosen path."""
     completer = PathCompleter()
-
     return prompt(prompt_text, completer=completer).strip()
 
 def get_target_domains():
-
+    """Collect one or more target domains from the user."""
     target_domains = []
 
     while True:
@@ -279,12 +242,12 @@ def get_target_domains():
                 print("??File not found. Please enter a valid file path.")
         
         else:
-            print(" Invalid choice. Please select 1 - 2.")
+            print("???Invalid choice. Please select 1 - 2.")
 
     return target_domains
 
 def select_depth():
-
+    """Choose domain depth for dorking (1-3)."""
     while True:
         print("\n")
         print("1] target.com")
@@ -299,7 +262,7 @@ def select_depth():
             print("Invalid choice. Please enter 1 - 3.")
 
 def integrate_notify(): 
-
+    """Ask whether to send the report using notify (Y/N)."""
     while True: 
         print("\n") 
         print("\n") 
@@ -313,7 +276,7 @@ def integrate_notify():
             print("??Invalid choice. Please enter Y or N")
 
 def adjust_depth(target_domains, depth):
-
+    """Apply wildcard prefixes based on the selected depth."""
     try:
         depth = int(depth)  
         if depth < 1:  
@@ -331,6 +294,7 @@ def adjust_depth(target_domains, depth):
     return adjusted_domains
 
 def sanitize_filename(domain_name):
+    """Sanitize a domain string for filesystem-safe filenames."""
 
     # '*' -> 'wildcard'
     sanitized = domain_name.replace('*', 'wildcard')
@@ -339,6 +303,7 @@ def sanitize_filename(domain_name):
     return sanitized
 
 def agents(llm):
+    """Create and return CrewAI agents for search, analyze, and write."""
 
     searcher = Agent(
         role="searcher",
@@ -377,6 +342,7 @@ def agents(llm):
 # Removed min/max interactive configuration and system prompt per request
 
 def task(target_domain, domain, agents):
+    """Build the task sequence for search, analysis, and reporting."""
        
     task1 = Task(
         description=f"""
@@ -664,7 +630,7 @@ def task(target_domain, domain, agents):
 
         ## Formatting Requirements
         - Use clear section headers and professional formatting
-        - Include severity icons: ?뵶 Critical, ?윝 High, ?윞 Medium, ?뵷 Low, ?뱄툘 Info
+        - Include severity icons: ?�?Critical, ???High, ???Medium, ?�?Low, ?뱄툘 Info
         - Assign unique IDs: AV-001 (Attack Vector), ID-001 (Information Disclosure)
         - Use tables for risk matrices and summaries
         - Include actionable commands and URLs where relevant
@@ -847,7 +813,7 @@ def task(target_domain, domain, agents):
 
 # Override select_llm with env-validated constructor
 def select_llm():
-
+    """Interactively select an LLM backend with env validation."""
     while True:
         print("\n")
         print("1. GPT-4o Mini")
@@ -928,10 +894,8 @@ if __name__ == "__main__":
                 if isinstance(_t, _Serp):
                     configured_n = getattr(_t, 'n_results', None) or getattr(_t, 'num_results', None) or getattr(_t, 'num', None)
                     break
-                
             if configured_n is not None:
                 break
-
         if configured_n is not None:
             print(f"[i] Serper search results per query configured to: {configured_n}")
     except Exception:
